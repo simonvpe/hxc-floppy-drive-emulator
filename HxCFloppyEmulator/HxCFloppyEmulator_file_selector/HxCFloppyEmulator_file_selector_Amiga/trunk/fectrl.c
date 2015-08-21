@@ -96,8 +96,10 @@ extern unsigned short SCREEN_YRESOL;
 extern unsigned char  NUMBER_OF_FILE_ON_DISPLAY;
 
 struct Interrupt *rbfint, *priorint;
-unsigned long timercnt;
+volatile unsigned long timercnt;
 extern unsigned char keyup;
+
+volatile unsigned short io_floppy_timeout;
 
 void print_hex(unsigned char * buffer, int size)
 {
@@ -703,6 +705,8 @@ int getext(char * path,char * exttodest)
 void ithandler(void)
 {
 	timercnt++;
+
+	io_floppy_timeout++;
 
 	if( ( Keyboard() & 0x80 )  && !Joystick())
 	{
