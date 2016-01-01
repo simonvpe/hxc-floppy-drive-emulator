@@ -1,6 +1,6 @@
 /*
 //
-// Copyright (C) 2009-2014 Jean-François DEL NERO
+// Copyright (C) 2009-2016 Jean-François DEL NERO
 //
 // This file is part of the HxCFloppyEmulator file selector.
 //
@@ -39,6 +39,7 @@
 #include <intuition/screens.h>
 #include <intuition/preferences.h>
 #include <stdio.h>
+#include <string.h>
 
 
 #include "keysfunc_defs.h"
@@ -276,14 +277,14 @@ int test_drive(int drive)
 
 	waitms(100);
 
-	// Track 0
+	// Jump to Track 0 ("Slow")
 	t = 0;
 	while((READREG_B(CIAAPRA) & CIAAPRA_DSKTRACK0) && (t<260))
 	{
 		WRITEREG_B(CIABPRB, ~(CIABPRB_DSKMOTOR | (CIABPRB_DSKSEL0<<(drive&3))  | CIABPRB_DSKSTEP));
-		waitus(2);
+		waitus(10);
 		WRITEREG_B(CIABPRB, ~(CIABPRB_DSKMOTOR | (CIABPRB_DSKSEL0<<(drive&3)) ) );
-		waitus(2);
+		waitus(80);
 
 		t++;
 	}
@@ -293,30 +294,33 @@ int test_drive(int drive)
 		c = 0;
 		do
 		{
-			// Track 30
-			for(j=0;j<30;j++)
+			// Jump to Track 30 (Fast)
+			for(j=0;j<40;j++)
 			{
 				WRITEREG_B(CIABPRB, ~(CIABPRB_DSKMOTOR | (CIABPRB_DSKSEL0<<(drive&3)) | CIABPRB_DSKDIREC |CIABPRB_DSKSTEP) );
-				waitus(2);
+				waitus(8);
 				WRITEREG_B(CIABPRB, ~(CIABPRB_DSKMOTOR | (CIABPRB_DSKSEL0<<(drive&3)) | CIABPRB_DSKDIREC ) );
-				waitus(2);
+				waitus(8);
 			}
 
+			waitus(200);
+
+			// And go back to Track 30 (Slow)
 			t = 0;
-			while((READREG_B(CIAAPRA) & CIAAPRA_DSKTRACK0) && (t<30))
+			while((READREG_B(CIAAPRA) & CIAAPRA_DSKTRACK0) && (t<40))
 			{
 				WRITEREG_B(CIABPRB, ~(CIABPRB_DSKMOTOR | (CIABPRB_DSKSEL0<<(drive&3))  | CIABPRB_DSKSTEP));
-				waitus(2);
+				waitus(10);
 				WRITEREG_B(CIABPRB, ~(CIABPRB_DSKMOTOR | (CIABPRB_DSKSEL0<<(drive&3)) ) );
-				waitus(2);
+				waitus(80);
 
 				t++;
 			}
 
 			c++;
-		}while( (t != 30) && c < 4 );
+		}while( (t != 40) && c < 2 );
 
-		if(t == 30)
+		if(t == 40)
 		{
 			WRITEREG_B(CIABPRB, ~(CIABPRB_DSKMOTOR | (CIABPRB_DSKSEL0<<(drive&3)) ) );
 
@@ -1108,43 +1112,12 @@ void disablemousepointer()
 	WRITEREG_W( DMACON ,0x20);
 }
 
-void _reboot();
+extern unsigned long _reboot();
 
 void reboot()
 {
-//ColdReboot();
-Supervisor(_reboot);
+	_reboot();
+	for(;;);
 }
-asm (
-".globl	__reboot;"
-".align 4 ;"//IMPORTANT! Longword align!
-"__reboot:                              ;"
-//"                movea.l  #4,a6        ;"//Pointer to the Exec library base
-//"                cmp.w   #36,0x14(a6) ;"//LIB_VERSION
-//"                blt.s   old_exec     ;"
-//"                jmp     superrst ;"
 
-//"                jmp     -726(a6)     ;"//Let Exec do it...
-//"                jmp failreboot;"
-
-//---- manually reset the Amiga ---------------------------------------------
-
-"superrst:    ;"
-"               move.w	#0x2700,sr          ;"
-"		lea	0x0FC0000,a0       ;"
-//"		lea	0x01000004,a0       ;"
-//"		sub.l	-0x1C(a0),a0        ;"
-//"		movea.l	(a0),a0             ;"
-//"		subq.l	#2,a0               ;"
-//"		move.l	#0xFFFFFFFF,(4).w   ;"
-"		bra.s	resetinst           ;"
-".align 4 ;"//IMPORTANT! Longword align!
-"resetinst:	            ;"
-"               reset       ;"
-"		jmp	(a0);"
-
-"failreboot:       ;"
-"                rts;"
-
-);
 
